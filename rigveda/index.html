@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Wheel of RgVeda</title>
+<meta name="description" content="A visual RgVeda Directory.">
+<style>
+@import url(../media/style.css);
+path {
+  stroke: #000;
+  stroke-width: 0.1;
+  cursor: pointer;
+}
+
+text {
+  font: 12px sans-serif;
+  cursor: pointer;
+}
+
+body {
+  width: 880px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  margin: .5em 0;
+}
+
+p#intro {
+  text-align: center;
+  margin: 1em 0;
+}
+</style>
+
+<h1>Wheel of Rgveda</h1>
+<div id="vis"><img src="full.png"></div>
+<script src="../d3.min.js"></script>
+<script>
+var width = 840,
+    height = width,
+    radius = width / 2,
+    x = d3.scale.linear().range([0, 2 * Math.PI]),
+    y = d3.scale.pow().exponent(1.3).domain([0, 1]).range([0, radius]),
+    padding = 5,
+    duration = 3000;
+
+var div = d3.select("#vis");
+
+div.select("img").remove();
+
+var vis = div.append("svg")
+    .attr("width", width + padding * 2)
+    .attr("height", height + padding * 2)
+  .append("g")
+    .attr("transform", "translate(" + [radius + padding, radius + padding] + ")");
+
+div.append("p")
+    .attr("id", "intro")
+    .text("Click to zoom - Click center to Zoom out - Click Hymn to Read");
+
+var partition = d3.layout.partition()
+    .sort(null)
+    .value(function(d) { return 5.8 - d.depth; });
+
+var arc = d3.svg.arc()
+    .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
+    .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
+    .innerRadius(function(d) { return Math.max(0, d.y ? y(d.y) : d.y); })
+    .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
+
+d3.csv("hymnlist.csv", function(csverr, csvdata) {
+
+  /*
+  ** Build the JSON Object
+  */
+  //  Root Nodes
+  var json = [  
+  { "name": "Mandalas", "colour": "black", "children": [] , "top": 0 },
+  {
+    "name": "Subject", "colour": "darkred", "top": 0, 
+    "children": [
+	  { "name": "Other", "children": [], "top": 0 },
+      { "name": "Agni (Fire)", "children": [], "top": 0 },
+	  { "name": "Visvedevas", "children": [], "top": 0 },
+	  { "name": "Indra (Sky)", "children": [], "top": 0 },
+	  { "name": "Indra+", "children": [], "top": 0 },
+	  { "name": "Asvins (Healer)", "children": [], "top": 0 },
+	  { "name": "Soma (Drink)", "children": [], "top": 0 },
+	  { "name": "Mitra-Varuna", "children": [], "top": 0 },
+	  { "name": "Maruts (Storm)", "children": [], "top": 0 },
+	  { "name": "Usha (Dawn)", "children": [], "top": 0 }
+    ]
+  },
+  {
+    "name": "Selections","colour": "white", "top": 0,
+    "children": [
+      { "name": "Doniger", "children": [], "colour": "darkred", "top": 0 },
+      { "name": "MacDonell", "children": [], "colour": "grey", "top": 0 } ,
+      { "name": "Aurobindo", "children": [], "colour": "black", "top": 0 }  
+    ]
+  }
+];
+
+   var colormap = { "Agni": "red", "Visvedevas": "#ffccaa", "Indra": "black", "Asvins": "#ffc060",
+                    "Soma": "#ffa040", "Mitra-Varuna": "#ff8020", "Maruts": "#ff6000", "Dawn": "#ffbbbb" };
+   var tagmap = { "Agni": 1, "Visvedevas": 2, "Indra": 3, "Asvins": 5, "Soma": 6, "Mitra-Varuna": 7, "Maruts": 8, "Dawn": 9,
+                   "Indra-Agni": 4,  "Indra-Soma": 4, "Indra-Vaikuntha": 4, "Indra-Varuna": 4, "Indra-Maruts": 4, "Indra-Visnu": 4} ; 
+
+	// Add the 10 Mandalas			   
+	for (i = 0; i < 10; i++) {
+	  json[0].children.push( { "name": "Mandala " + (i+1), "children": [], "colour": "#"+i+"00", "top": 0 });
+    }
+				   
+   // Add the Leaf Nodes (Hymns from csv data), to various parents nodes
+   csvdata.forEach(function (d) {
+	   var url = d.Mandala+"/Hymn_"+d.Hymn,
+	       colour = colormap[d.Tag1],
+		   name = d.Tag1 + " " + d.Name,
+	       top = 1;	   
+	   if(d.Aurobindo !== ""){
+	      json[2].children[2].children.push({ "name": d.Aurobindo +"  " + d.Name, "colour": colour, "link": url, "top": 0 }); // tag level
+       }
+	   if(d.MacDonell !== ""){
+          top = 0; 	   
+	      json[2].children[1].children.push({ "name": d.MacDonell + "  " + d.Name, "colour": colour, "link": url, "top": 0}); // tag level
+       }
+	   if(d.Doniger !== ""){
+	      top = 0;
+	      json[2].children[0].children.push({ "name": d.Doniger + "  " + d.Name, "colour": colour, "link": url, "top": 0}); // tag level
+       }
+	   json[0].children[d.Mandala-1].children.push({ "name": name, "colour": colour, "link": url, "top": top}); // mandala level
+	   idx = tagmap[d.Tag1], 
+	   idx = idx !== undefined ? idx : 0,
+	   json[1].children[idx].children.push({ "name": name, "colour": colour, "link": url, "top": top}); // tag level
+	 });
+  
+  /*
+  ** Render the Sunburst
+  */
+  var nodes = partition.nodes({children: json});
+
+  var path = vis.selectAll("path").data(nodes);
+  path.enter().append("path")
+      .attr("id", function(d, i) { return "path-" + i; })
+      .attr("d", arc)
+      .attr("fill-rule", "evenodd")
+      .style("fill", colour)
+      .on("click", click);
+
+  var text = vis.selectAll("text").data(nodes);
+  var textEnter = text.enter().append("text")
+	  .style("fill-opacity", function(d) { return d.depth < 3 ? 1 : 1e-6; })
+      .style("fill", function(d) {
+        return brightness(d3.rgb(colour(d))) < 125 ? "#eee" : "#000";
+      })
+	  .style("visibility", function(d) { return d.depth < 3 ? null : "hidden" ; })
+      .attr("text-anchor", function(d) {
+        return x(d.x + d.dx / 2) > Math.PI ? "start" : "end";
+      })
+      .attr("dy", ".2em")
+	  .style("font", function(d) { return d.depth < 2 ? "20px serif" : "12px sans-serif"; })
+      .attr("transform", function(d) {
+            angle = x(d.x + d.dx / 2) * 180 / Math.PI - 90,
+            rotate = angle ;
+        return "rotate(" + rotate + ")translate(" + (y(d.y + d.dy ) - padding - d.top * 20) + ")rotate(" + (angle > 90 ? -180 : 0) + ")";
+      })
+      .on("click", click);
+  textEnter.append("tspan")
+      .attr("x", 0)
+      .text(function(d) { return d.name; }); // not normalized
+
+  function click(d) {
+  if(!d.children && d.link !== undefined) {
+  window.open( "http://en.wikisource.org/wiki/The_Rig_Veda/Mandala_" + d.link);
+  return;
+  }
+    path.transition()
+      .duration(duration)
+      .attrTween("d", arcTween(d));
+
+    // Somewhat of a hack as we rely on arcTween updating the scales.
+    text.style("visibility", function(e) {
+          return ( e.depth < 3 || d.depth > 1 ) && isParentOf(d, e) ? null : d3.select(this).style("visibility") ;
+        })
+      .transition()
+        .duration(duration)
+        .attrTween("text-anchor", function(d) {
+          return function() {
+            return x(d.x + d.dx / 2) > Math.PI ? "start" : "end";
+          };
+        })
+        .attrTween("transform", function(d) {
+          return function() { 
+            var angle = x(d.x + d.dx / 2) * 180 / Math.PI - 90,
+                rotate = angle ;
+            return "rotate(" + rotate + ")translate(" + (y(d.y + d.dy) - padding - d.top * 20) + ")rotate(" + (angle > 90 ? -180 : 0) + ")";
+          };
+        })
+        .style("fill-opacity", function(e) { return ( ( e.depth < 3 || d.depth > 1 ) && isParentOf(d, e)) ? 1 : 1e-6; })
+	    .style("font", function(e) { return e.depth - d.depth < 2 && e.depth < 3 && isParentOf(d, e) ? "20px serif" : "12px sans-serif"; })
+        .each("end", function(e) {
+          d3.select(this).style("visibility", ( ( e.depth < 3 || d.depth > 1 ) && isParentOf(d, e) ) ? null : "hidden");
+        });
+  }
+});
+
+function isParentOf(p, c) {
+  if (p === c) return true;
+  if (p.children) {
+    return p.children.some(function(d) {
+      return isParentOf(d, c);
+    });
+  }
+  return false;
+}
+
+function colour(d) {
+  if (d.colour) 
+  {
+     return d.colour 
+  }
+  if( d.children)
+  {
+    // There is a maximum of two children!
+    var colours = d.children.map(colour),
+        a = d3.hsl(colours[0]),
+        b = d3.hsl(colours[1]);
+    // L*a*b* might be better here...
+    return d3.hsl((a.h + b.h) / 2, a.s * 1.2, a.l / 1.2);
+  }
+  return "#fff";
+}
+
+// Interpolate the scales!
+function arcTween(d) {
+  var my = maxY(d),
+      xd = d3.interpolate(x.domain(), [d.x, d.x + d.dx]),
+      yd = d3.interpolate(y.domain(), [d.y, my]),
+      yr = d3.interpolate(y.range(), [d.y ? 20 : 0, radius]);
+  return function(d) {
+    return function(t) { x.domain(xd(t)); y.domain(yd(t)).range(yr(t)); return arc(d); };
+  };
+}
+
+function maxY(d) {
+  return d.children ? Math.max.apply(Math, d.children.map(maxY)) : d.y + d.dy;
+}
+
+// http://www.w3.org/WAI/ER/WD-AERT/#color-contrast
+function brightness(rgb) {
+  return rgb.r * .299 + rgb.g * .587 + rgb.b * .114;
+}
+</script>
+<h2>Rigveda</h2>
+<p> The Rigveda is an ancient Indian collection of Vedic Sanskrit hymns, likely composed between c. 1500–1200 BC. 
+It is a collection of 1028 hymns, organized into ten books. 
+The hymns are dedicated to Rigvedic deities like Agni (fire ), Indra (sky ) and Varuna (water). 
+Many philosophical questions about the origin of the universe and the nature of god are also addressed.
+
+<h2>The Wheel</h2>
+<p> The wheel can used to traverse the collection, by chapter, or by subject. I recommend starting with the 'selections' by different anthologists, which have more popular hymns.
+Clicking on the outermost layer will take you the wikisource page of the hymn. Clicking on the center will zoom out one level. Clicking anywhere else will zoom into that subset. 
+The Leaves are colored by the deity, which gives you a sense of the predominant deity in any chapter or selection.
+
+<h2>Credits</h2>
+<p>Built with <a href="http://d3js.org">D3.js</a>. This example is modified from the <a href="https://www.jasondavies.com/coffee-wheel/">Coffee Wheel</a> by <a href="https://www.jasondavies.com">Jason Davies</a>, 
+which in turn is based on an <a href="http://bl.ocks.org/mbostock/4348373">example</a> by <a href="http://bost.ocks.org/mike">Mike Bostock</a>. 
+In my version the outermost leaves are hyperlinks, and the leaf labels are displayed only when zoomed into. <br><br>
+
+The association of deities to hymns was parsed from the <a href="http://www.sacred-texts.com/hin/rigveda/">Sacred-texts</a> index of mandalas.
+
+<script>
+  if (top != self) top.location.replace(location);
+</script>
