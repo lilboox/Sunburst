@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Indic Academy</title>
+<meta name="description" content="Indic Academy Directory.">
+<style>
+@import url(../media/style.css);
+path {
+  stroke: #000;
+  stroke-width: 0.1;
+  cursor: pointer;
+}
+
+text {
+  font: 12px sans-serif;
+  cursor: pointer;
+}
+
+body {
+  width: 880px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  margin: .5em 0;
+}
+
+p#intro {
+  text-align: center;
+  margin: 1em 0;
+}
+</style>
+
+<h1>Indic Academy</h1>
+<div id="vis"><img src="full.png"></div>
+<script src="../d3.min.js"></script>
+<script>
+var width = 840,
+    height = width,
+    radius = width / 2,
+    x = d3.scale.linear().range([0, 2 * Math.PI]),
+    y = d3.scale.pow().exponent(1.3).domain([0, 1]).range([0, radius]),
+    padding = 5,
+    duration = 3000;
+
+var ColorMap  = [  "#edb", "#de9", "#bc4", "#db9", "#f82", "#c44", "#754" ];
+var ColorMapD = [  "#dca", "#cd8", "#ab3", "#ca8", "#e71", "#b33", "#643" ]; // one notch darker
+var numcolors = 7;
+
+var div = d3.select("#vis");
+
+div.select("img").remove();
+
+var vis = div.append("svg")
+    .attr("width", width + padding * 2)
+    .attr("height", height + padding * 2)
+  .append("g")
+    .attr("transform", "translate(" + [radius + padding, radius + padding] + ")");
+
+div.append("p")
+    .attr("id", "intro")
+    .text("Click to zoom - Click center to Zoom out - Click Hymn to Read");
+
+var partition = d3.layout.partition()
+    .sort(null)
+    .value(function(d) { return 5.8 - d.depth; });
+
+var arc = d3.svg.arc()
+    .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
+    .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
+    .innerRadius(function(d) { return Math.max(0, d.y ? y(d.y) : d.y); })
+    .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
+
+d3.csv("list.csv", function(csverr, csvdata) {
+
+  /*
+  ** Build the JSON Object
+  */
+  var json = [  
+  //  Root Nodes
+  { "name": "Cities", "colour": ColorMap[0], "children": [
+		{ "name": "Others", "colour": ColorMap[0], "children": []  },
+		{ "name": "Bangalore", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Chennai", "colour": ColorMap[0], "children": []  },  
+		{ "name": "New Delhi", "colour": ColorMap[0], "children": []  },  	
+		{ "name": "Hyderabad", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Mumbai", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Vijayawada", "colour": ColorMap[0], "children": []  },
+		{ "name": "Overseas", "colour": ColorMap[0], "children": []  }
+	]  },
+  { "name": "Competence", "colour": ColorMap[1], "children": [
+		{ "name": "Others", "colour": ColorMap[0], "children": []  },
+		{ "name": "Politics", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Governance", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Foreign Policy", "colour": ColorMap[0], "children": []  },  	
+		{ "name": "Economics", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Social", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Environment", "colour": ColorMap[0], "children": []  },
+		{ "name": "Indic Studies", "colour": ColorMap[0], "children": []  },
+		{ "name": "Literature", "colour": ColorMap[0], "children": []  },
+		{ "name": "History", "colour": ColorMap[0], "children": []  },
+		{ "name": "Media", "colour": ColorMap[0], "children": []  },
+		{ "name": "Religion", "colour": ColorMap[0], "children": []  },
+		{ "name": "Art & Culture", "colour": ColorMap[0], "children": []  }
+  ]  },
+  { "name": "Community", "colour": ColorMap[2], "children": [
+		{ "name": "Others", "colour": ColorMap[0], "children": []  },
+	    { "name": "Universities", "colour": ColorMap[0], "children": []  },
+		{ "name": "Media", "colour": "#100", "children": []  },  
+		{ "name": "Public Intellectuals", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Artists", "colour": ColorMap[0], "children": []  },  	
+		{ "name": "Activists", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Academics", "colour": ColorMap[0], "children": []  },  
+		{ "name": "Websites", "colour": ColorMap[0], "children": []  },
+		{ "name": "NGOs", "colour": ColorMap[0], "children": []  },
+		{ "name": "Think Tanks", "colour": ColorMap[0], "children": []  }
+		]  }
+];
+
+   var citymap = { "Bangalore": 1, "Chennai": 2, "New Delhi": 3, "Hyderabad": 4, "Mumbai": 5, "Vijayawada": 6, "Overseas": 7} ; 
+   var competencemap = { "Politics": 1, "Governance": 2, "Foreign Policy": 3, "Economics": 4, "Social": 5, "Environment": 6, "Indic Studies": 7,
+						"Literature": 8, "History": 9, "Media": 10, "Religion": 11, "Art & Culture": 12} ; 
+   var communitymap = { "Universities": 1, "Media": 2, "Public Intellectuals": 3, "Artists": 4, "Activists": 5, "Academics": 6, "Websites": 7, "NGOs": 8, "Think Tanks": 9} ; 
+				   
+   // Add the Leaf Nodes (Hymns from csv data), to various parents nodes
+   csvdata.forEach(function (d) {   
+	   if(d.City !== ""){
+	   	  cityidx = citymap[d.City], 
+	      cityidx = cityidx !== undefined ? cityidx : 0,
+		  colidx = cityidx % numcolors,
+		  color = ColorMap[colidx],
+		  colorD = ColorMapD[colidx],
+		  json[0].children[cityidx].colour = color,
+    	  json[0].children[cityidx].children.push({ "name": d.Name, "colour": colorD });
+		  }   
+	   if(d.Competence !== ""){
+	   	  competenceidx = competencemap[d.Competence], 
+	      competenceidx = competenceidx !== undefined ? competenceidx : 0,
+		  colidx = competenceidx % numcolors,
+		  color = ColorMap[colidx],
+		  colorD = ColorMapD[colidx],
+		  json[1].children[competenceidx].colour = color,		  
+    	  json[1].children[competenceidx].children.push({ "name": d.Name, "colour": colorD});
+		  } 
+	   if(d.Community !== ""){
+	   	  communityidx = communitymap[d.Community], 
+	      communityidx = communityidx !== undefined ? communityidx : 0,
+		  colidx = communityidx % numcolors,
+		  color = ColorMap[colidx],
+		  colorD = ColorMapD[colidx],
+		  json[2].children[communityidx].colour = color,
+    	  json[2].children[communityidx].children.push({ "name": d.Name, "colour": colorD });
+		  } 
+		}
+    );
+  
+  /*
+  ** Render the Sunburst
+  */
+  var nodes = partition.nodes({children: json});
+
+  var path = vis.selectAll("path").data(nodes);
+  path.enter().append("path")
+      .attr("id", function(d, i) { return "path-" + i; })
+      .attr("d", arc)
+      .attr("fill-rule", "evenodd")
+      .style("fill", colour)
+      .on("click", click);
+
+  var text = vis.selectAll("text").data(nodes);
+  var textEnter = text.enter().append("text")
+	  .style("fill-opacity", function(d) { return d.depth < 3 ? 1 : 1e-6; })
+      .style("fill", function(d) {
+        return brightness(d3.rgb(colour(d))) < 125 ? "#eee" : "#000";
+      })
+	  .style("visibility", function(d) { return d.depth < 3 ? null : "hidden" ; })
+      .attr("text-anchor", function(d) {
+        return x(d.x + d.dx / 2) > Math.PI ? "start" : "end";
+      })
+      .attr("dy", ".2em")
+	  .style("font", function(d) { return d.depth < 2 ? "20px serif" : "12px sans-serif"; })
+      .attr("transform", function(d) {
+            angle = x(d.x + d.dx / 2) * 180 / Math.PI - 90,
+            rotate = angle ;
+        return "rotate(" + rotate + ")translate(" + (y(d.y + d.dy ) - padding ) + ")rotate(" + (angle > 90 ? -180 : 0) + ")";
+      })
+      .on("click", click);
+  textEnter.append("tspan")
+      .attr("x", 0)
+      .text(function(d) { return d.name; }); // not normalized
+
+  function click(d) {
+  if(!d.children && d.link !== undefined) {
+  window.open( "http://en.wikisource.org/wiki/The_Rig_Veda/Mandala_" + d.link);
+  return;
+  }
+    path.transition()
+      .duration(duration)
+      .attrTween("d", arcTween(d));
+
+    // Somewhat of a hack as we rely on arcTween updating the scales.
+    text.style("visibility", function(e) {
+          return ( e.depth < 3 || d.depth > 1 ) && isParentOf(d, e) ? null : d3.select(this).style("visibility") ;
+        })
+      .transition()
+        .duration(duration)
+        .attrTween("text-anchor", function(d) {
+          return function() {
+            return x(d.x + d.dx / 2) > Math.PI ? "start" : "end";
+          };
+        })
+        .attrTween("transform", function(d) {
+          return function() { 
+            var angle = x(d.x + d.dx / 2) * 180 / Math.PI - 90,
+                rotate = angle ;
+            return "rotate(" + rotate + ")translate(" + (y(d.y + d.dy) - padding ) + ")rotate(" + (angle > 90 ? -180 : 0) + ")";
+          };
+        })
+        .style("fill-opacity", function(e) { return ( ( e.depth < 3 || d.depth > 1 ) && isParentOf(d, e)) ? 1 : 1e-6; })
+	    .style("font", function(e) { return e.depth - d.depth < 2 && e.depth < 3 && isParentOf(d, e) ? "20px serif" : "12px sans-serif"; })
+        .each("end", function(e) {
+          d3.select(this).style("visibility", ( ( e.depth < 3 || d.depth > 1 ) && isParentOf(d, e) ) ? null : "hidden");
+        });
+  }
+});
+
+function isParentOf(p, c) {
+  if (p === c) return true;
+  if (p.children) {
+    return p.children.some(function(d) {
+      return isParentOf(d, c);
+    });
+  }
+  return false;
+}
+
+function colour(d) {
+  if (d.colour) 
+  {
+     return d.colour 
+  }
+  if( d.children)
+  {
+    // There is a maximum of two children!
+    var colours = d.children.map(colour),
+        a = d3.hsl(colours[0]),
+        b = d3.hsl(colours[1]);
+    // L*a*b* might be better here...
+    return d3.hsl((a.h + b.h) / 2, a.s * 1.2, a.l / 1.2);
+  }
+  return "#fff";
+}
+
+// Interpolate the scales!
+function arcTween(d) {
+  var my = maxY(d),
+      xd = d3.interpolate(x.domain(), [d.x, d.x + d.dx]),
+      yd = d3.interpolate(y.domain(), [d.y, my]),
+      yr = d3.interpolate(y.range(), [d.y ? 20 : 0, radius]);
+  return function(d) {
+    return function(t) { x.domain(xd(t)); y.domain(yd(t)).range(yr(t)); return arc(d); };
+  };
+}
+
+function maxY(d) {
+  return d.children ? Math.max.apply(Math, d.children.map(maxY)) : d.y + d.dy;
+}
+
+// http://www.w3.org/WAI/ER/WD-AERT/#color-contrast
+function brightness(rgb) {
+  return rgb.r * .299 + rgb.g * .587 + rgb.b * .114;
+}
+</script>
+<h2>About Indic Academy</h2>
+lorem ipsum
+
+<script>
+  if (top != self) top.location.replace(location);
+</script>
